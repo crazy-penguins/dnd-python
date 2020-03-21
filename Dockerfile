@@ -6,7 +6,7 @@ ENV DEBIAN_FRONTEND="noninteractive"
 RUN set -ex \
     && echo 'Acquire::CompressionTypes::Order:: "gz";' > /etc/apt/apt.conf.d/99use-gzip-compression \
     && apt-get update \
-    && apt install -y apt-transport-https gnupg ca-certificates \
+    && apt install -y apt-transport-https gnupg ca-certificates apt-utils \
     && apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF \
     && echo "deb https://download.mono-project.com/repo/ubuntu stable-bionic main" | tee /etc/apt/sources.list.d/mono-official-stable.list \
     && apt-get install software-properties-common -y --no-install-recommends \
@@ -38,8 +38,10 @@ RUN set -ex \
           netbase openssl patch pkg-config procps python-bzrlib \
           python-configobj python-openssl rsync sgml-base sgml-data subversion \
           tar tcl tcl8.6 tk tk-dev unzip wget xfsprogs xml-core xmlto xsltproc \
-          libzip4 libzip-dev vim xvfb xz-utils zip zlib1g-dev \
-    && rm -rf /var/lib/apt/lists/* 
+          libzip4 libzip-dev vim xvfb xz-utils zip zlib1g-dev netcat \
+          default-mysql-client libldap2-dev libsasl2-dev dnsutils libraw-dev \
+          libaio1 libaio-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN useradd codebuild-user
 
@@ -190,6 +192,13 @@ COPY ssh_config /root/.ssh/config
 COPY runtimes.yml /codebuild/image/config/runtimes.yml
 COPY dockerd-entrypoint.sh /usr/local/bin/
 COPY amazon-ssm-agent.json          /etc/amazon/ssm/
+
+#=========== mssql client ==========
+RUN curl -s https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
+  && curl -s https://packages.microsoft.com/config/debian/9/prod.list > /etc/apt/sources.list.d/mssql-release.list \
+  && apt-get -qq update \
+  && ACCEPT_EULA=Y apt-get -qq install msodbcsql17 2>&1 >/dev/null \
+  && apt-get install -qq unixodbc-dev 2>&1 >/dev/null
 
 ENTRYPOINT ["dockerd-entrypoint.sh"]
 
